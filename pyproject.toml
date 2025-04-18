@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-sdk"
+version = "0.1.0"
+description = "MCP SDK with dynamic CLI support"
+readme = "README.md"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests>=2.25.1",
+    "pydantic>=1.8.2",
+    "rich>=10.0.0",
+    "pyyaml>=5.4.1",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/mcp-sdk"
+
+[project.scripts]
+mcp = "mcp_sdk.cli:main"
+
+[tool.setuptools]
+packages = ["mcp_sdk"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.rst"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mcp_sdk.__version__"}
+

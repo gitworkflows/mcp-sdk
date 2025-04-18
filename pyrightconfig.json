@@ -1,0 +1,14 @@
+{
+    "include": ["mcp_sdk", "examples"],
+    "exclude": ["venv", "**/__pycache__"],
+    "ignore": [],
+    "strict": true,
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": true,
+    "pythonVersion": "3.8",
+    "pythonPlatform": "Darwin",
+    "typeCheckingMode": "strict",
+    "useLibraryCodeForTypes": true,
+    "venvPath": ".",
+    "venv": "venv"
+} 

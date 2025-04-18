@@ -1,0 +1,76 @@
+Metadata-Version: 2.4
+Name: mcp-sdk
+Version: 0.1.0
+Summary: MCP SDK with dynamic CLI support
+Home-page: https://github.com/yourusername/mcp-sdk
+Author: Your Name
+Author-email: Your Name <your.email@example.com>
+Project-URL: Homepage, https://github.com/yourusername/mcp-sdk
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.25.1
+Requires-Dist: pydantic>=1.8.2
+Requires-Dist: rich>=10.0.0
+Requires-Dist: pyyaml>=5.4.1
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
+# MCP SDK
+
+A Python SDK for interacting with the Media Control Protocol (MCP) API.
+
+## Installation
+
+```bash
+pip install mcp-sdk
+```
+
+## Quick Start
+
+```python
+from mcp_sdk.client import MCPClient
+
+# Initialize the client
+client = MCPClient(
+    api_key="your-api-key",
+    endpoint="http://localhost:8000"
+)
+
+# Example usage
+input_data = {
+    "model": "gpt-4",
+    "context": "This is a test message",
+    "settings": {
+        "temperature": 0.7,
+        "max_tokens": 150
+    }
+}
+
+# Send data to MCP
+response = client.send(input_data)
+print(response)
+```
+
+## Features
+
+- Easy-to-use Python interface for MCP API
+- Type-safe request and response handling
+- Automatic retry mechanism for failed requests
+- Comprehensive error handling
+- Async support
+
+## Documentation
+
+For detailed documentation, please visit [documentation link].
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details. 

@@ -1,0 +1,2 @@
+[console_scripts]
+mcp = mcp_sdk.cli:main
