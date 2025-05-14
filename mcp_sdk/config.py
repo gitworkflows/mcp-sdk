@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, validator
 
+
 class MCPConfig(BaseModel):
     """MCP Configuration Model"""
+
     api_key: str
     endpoint: str
     timeout: int = Field(default=30, gt=0)
@@ -17,20 +19,21 @@ class MCPConfig(BaseModel):
     headers: Optional[Dict[str, str]] = None
     metadata: Optional[Dict[str, Any]] = None
 
-    @validator('endpoint')
+    @validator("endpoint")
     def validate_endpoint(cls, v):
-        if not v.startswith(('http://', 'https://')):
-            raise ValueError('endpoint must start with http:// or https://')
-        return v.rstrip('/')
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("endpoint must start with http:// or https://")
+        return v.rstrip("/")
+
 
 class ConfigManager:
     """Manages MCP configuration loading and validation"""
 
     DEFAULT_CONFIG_PATHS = [
-        Path('mcp_config.json'),
-        Path('mcp_config.yaml'),
-        Path('~/.mcp/config.json').expanduser(),
-        Path('~/.mcp/config.yaml').expanduser()
+        Path("mcp_config.json"),
+        Path("mcp_config.yaml"),
+        Path("~/.mcp/config.json").expanduser(),
+        Path("~/.mcp/config.yaml").expanduser(),
     ]
 
     @classmethod
@@ -72,7 +75,7 @@ class ConfigManager:
         """Load configuration from file"""
         try:
             with open(path) as f:
-                if path.suffix == '.json':
+                if path.suffix == ".json":
                     config_data = json.load(f)
                 else:
                     config_data = yaml.safe_load(f)
@@ -84,28 +87,28 @@ class ConfigManager:
     def _load_env_config(cls) -> Optional[MCPConfig]:
         """Load configuration from environment variables"""
         env_vars = {
-            'api_key': os.getenv('MCP_API_KEY'),
-            'endpoint': os.getenv('MCP_ENDPOINT'),
-            'timeout': os.getenv('MCP_TIMEOUT'),
-            'max_retries': os.getenv('MCP_MAX_RETRIES'),
-            'retry_backoff_factor': os.getenv('MCP_RETRY_BACKOFF_FACTOR'),
-            'verify_ssl': os.getenv('MCP_VERIFY_SSL'),
+            "api_key": os.getenv("MCP_API_KEY"),
+            "endpoint": os.getenv("MCP_ENDPOINT"),
+            "timeout": os.getenv("MCP_TIMEOUT"),
+            "max_retries": os.getenv("MCP_MAX_RETRIES"),
+            "retry_backoff_factor": os.getenv("MCP_RETRY_BACKOFF_FACTOR"),
+            "verify_ssl": os.getenv("MCP_VERIFY_SSL"),
         }
 
         # Filter out None values and convert types
         config_data = {}
         for key, value in env_vars.items():
             if value is not None:
-                if key in ['timeout', 'max_retries']:
+                if key in ["timeout", "max_retries"]:
                     config_data[key] = int(value)
-                elif key == 'retry_backoff_factor':
+                elif key == "retry_backoff_factor":
                     config_data[key] = float(value)
-                elif key == 'verify_ssl':
-                    config_data[key] = value.lower() == 'true'
+                elif key == "verify_ssl":
+                    config_data[key] = value.lower() == "true"
                 else:
                     config_data[key] = value
 
-        if not config_data.get('api_key') or not config_data.get('endpoint'):
+        if not config_data.get("api_key") or not config_data.get("endpoint"):
             return None
 
-        return MCPConfig(**config_data) 
+        return MCPConfig(**config_data)

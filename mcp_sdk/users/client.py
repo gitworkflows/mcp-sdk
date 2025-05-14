@@ -10,8 +10,9 @@ from .models import (
     LoginRequest,
     LoginResponse,
     TokenRefreshRequest,
-    TokenRefreshResponse
+    TokenRefreshResponse,
 )
+
 
 class UserClient:
     """Client for user management operations"""
@@ -41,10 +42,9 @@ class UserClient:
         Returns:
             User: The created user
         """
-        response = self.client.send({
-            "operation": "create_user",
-            "data": user_data.dict()
-        })
+        response = self.client.send(
+            {"operation": "create_user", "data": user_data.dict()}
+        )
         return User(**response)
 
     def update_user(self, user_id: str, user_data: UserUpdate) -> User:
@@ -58,11 +58,13 @@ class UserClient:
         Returns:
             User: The updated user
         """
-        response = self.client.send({
-            "operation": "update_user",
-            "user_id": user_id,
-            "data": user_data.dict(exclude_unset=True)
-        })
+        response = self.client.send(
+            {
+                "operation": "update_user",
+                "user_id": user_id,
+                "data": user_data.dict(exclude_unset=True),
+            }
+        )
         return User(**response)
 
     def get_user(self, user_id: str) -> User:
@@ -75,10 +77,7 @@ class UserClient:
         Returns:
             User: The requested user
         """
-        response = self.client.send({
-            "operation": "get_user",
-            "user_id": user_id
-        })
+        response = self.client.send({"operation": "get_user", "user_id": user_id})
         return User(**response)
 
     def list_users(self, **filters) -> List[User]:
@@ -91,10 +90,7 @@ class UserClient:
         Returns:
             List[User]: List of users matching the filters
         """
-        response = self.client.send({
-            "operation": "list_users",
-            "filters": filters
-        })
+        response = self.client.send({"operation": "list_users", "filters": filters})
         return [User(**user_data) for user_data in response]
 
     def delete_user(self, user_id: str) -> None:
@@ -104,12 +100,11 @@ class UserClient:
         Args:
             user_id: The ID of the user to delete
         """
-        self.client.send({
-            "operation": "delete_user",
-            "user_id": user_id
-        })
+        self.client.send({"operation": "delete_user", "user_id": user_id})
 
-    def login(self, username: str, password: str, remember_me: bool = False) -> LoginResponse:
+    def login(
+        self, username: str, password: str, remember_me: bool = False
+    ) -> LoginResponse:
         """
         Login a user and create a session.
 
@@ -122,14 +117,9 @@ class UserClient:
             LoginResponse: The login response containing user and session
         """
         request = LoginRequest(
-            username=username,
-            password=password,
-            remember_me=remember_me
+            username=username, password=password, remember_me=remember_me
         )
-        response = self.client.send({
-            "operation": "login",
-            "data": request.dict()
-        })
+        response = self.client.send({"operation": "login", "data": request.dict()})
         login_response = LoginResponse(**response)
         self._current_session = login_response.session
         return login_response
@@ -137,10 +127,9 @@ class UserClient:
     def logout(self) -> None:
         """Logout the current user and invalidate the session"""
         if self._current_session:
-            self.client.send({
-                "operation": "logout",
-                "session_id": self._current_session.id
-            })
+            self.client.send(
+                {"operation": "logout", "session_id": self._current_session.id}
+            )
             self._current_session = None
 
     def refresh_token(self) -> TokenRefreshResponse:
@@ -153,20 +142,17 @@ class UserClient:
         if not self._current_session:
             raise ValueError("No active session to refresh")
 
-        request = TokenRefreshRequest(
-            refresh_token=self._current_session.refresh_token
+        request = TokenRefreshRequest(refresh_token=self._current_session.refresh_token)
+        response = self.client.send(
+            {"operation": "refresh_token", "data": request.dict()}
         )
-        response = self.client.send({
-            "operation": "refresh_token",
-            "data": request.dict()
-        })
         refresh_response = TokenRefreshResponse(**response)
-        
+
         # Update current session with new token
         self._current_session.token = refresh_response.token
         self._current_session.refresh_token = refresh_response.refresh_token
         self._current_session.expires_at = refresh_response.expires_at
-        
+
         return refresh_response
 
     def validate_session(self) -> bool:
@@ -180,10 +166,12 @@ class UserClient:
             return False
 
         try:
-            self.client.send({
-                "operation": "validate_session",
-                "session_id": self._current_session.id
-            })
+            self.client.send(
+                {
+                    "operation": "validate_session",
+                    "session_id": self._current_session.id,
+                }
+            )
             return True
         except:
-            return False 
+            return False

@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any, List
 from ...client import MCPClient
 from .models import ImageRequest, ImageResponse
 
+
 class ImageClient:
     """Client for image processing operations"""
 
@@ -26,12 +27,7 @@ class ImageClient:
         Returns:
             ImageResponse: The generated image response
         """
-        request = ImageRequest(
-            prompt=prompt,
-            operation="generate",
-            size=size,
-            **kwargs
-        )
+        request = ImageRequest(prompt=prompt, operation="generate", size=size, **kwargs)
         response = self.client.send(request.dict())
         return ImageResponse(**response)
 
@@ -47,12 +43,7 @@ class ImageClient:
         Returns:
             ImageResponse: The edited image response
         """
-        request = ImageRequest(
-            prompt=prompt,
-            operation="edit",
-            image=image,
-            **kwargs
-        )
+        request = ImageRequest(prompt=prompt, operation="edit", image=image, **kwargs)
         response = self.client.send(request.dict())
         return ImageResponse(**response)
 
@@ -68,12 +59,7 @@ class ImageClient:
         Returns:
             ImageResponse: The resized image response
         """
-        request = ImageRequest(
-            operation="resize",
-            image=image,
-            size=size,
-            **kwargs
-        )
+        request = ImageRequest(operation="resize", image=image, size=size, **kwargs)
         response = self.client.send(request.dict())
         return ImageResponse(**response)
 
@@ -89,12 +75,7 @@ class ImageClient:
         Returns:
             ImageResponse: The styled image response
         """
-        request = ImageRequest(
-            operation="style",
-            image=image,
-            style=style,
-            **kwargs
-        )
+        request = ImageRequest(operation="style", image=image, style=style, **kwargs)
         response = self.client.send(request.dict())
         return ImageResponse(**response)
 
@@ -109,10 +90,6 @@ class ImageClient:
         Returns:
             ImageResponse: The analysis response
         """
-        request = ImageRequest(
-            operation="analyze",
-            image=image,
-            **kwargs
-        )
+        request = ImageRequest(operation="analyze", image=image, **kwargs)
         response = self.client.send(request.dict())
         return ImageResponse(**response)

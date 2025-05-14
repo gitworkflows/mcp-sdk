@@ -74,18 +74,19 @@ class MCPCLI:
                 formatter_class=argparse.RawDescriptionHelpFormatter
             )
 
-            # Add arguments
+            # Add arguments (positional)
             for arg_name, arg_schema in schema.arguments.items():
+                # Positional arguments are always required, so we don't use the required parameter
                 subparser.add_argument(
                     arg_name,
                     help=arg_schema.description,
                     type=self._get_type(arg_schema.type),
-                    required=arg_schema.required,
                     choices=arg_schema.choices
                 )
 
-            # Add options
+            # Add options (optional)
             for opt_name, opt_schema in schema.options.items():
+                # Only use required for optional arguments (--options)
                 subparser.add_argument(
                     f"--{opt_name}",
                     help=opt_schema.description,

@@ -9,7 +9,10 @@ JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+
+def create_access_token(
+    data: Dict[str, Any], expires_delta: Optional[timedelta] = None
+) -> str:
     """
     Create a JWT access token.
 
@@ -28,6 +31,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
+
 def create_refresh_token(data: Dict[str, Any]) -> str:
     """
     Create a JWT refresh token.
@@ -42,6 +46,7 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
 
 def verify_token(token: str) -> Dict[str, Any]:
     """
@@ -58,6 +63,7 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
+
 def authenticate(username: str, password: str) -> Optional[Session]:
     """
     Authenticate a user and create a session.
@@ -72,24 +78,22 @@ def authenticate(username: str, password: str) -> Optional[Session]:
     # This would typically verify against a database
     # For now, we'll use a simple mock
     if username == "admin" and password == "admin":
-        user_data = {
-            "id": "1",
-            "username": username,
-            "role": "admin"
-        }
+        user_data = {"id": "1", "username": username, "role": "admin"}
         access_token = create_access_token(user_data)
         refresh_token = create_refresh_token(user_data)
-        
+
         return Session(
             id="1",
             user_id="1",
             token=access_token,
             refresh_token=refresh_token,
-            expires_at=datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+            expires_at=datetime.utcnow()
+            + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
             created_at=datetime.utcnow(),
-            last_activity=datetime.utcnow()
+            last_activity=datetime.utcnow(),
         )
     return None
+
 
 def refresh_token(refresh_token: str) -> Optional[TokenRefreshResponse]:
     """
@@ -105,14 +109,16 @@ def refresh_token(refresh_token: str) -> Optional[TokenRefreshResponse]:
         payload = verify_token(refresh_token)
         access_token = create_access_token(payload)
         new_refresh_token = create_refresh_token(payload)
-        
+
         return TokenRefreshResponse(
             token=access_token,
             refresh_token=new_refresh_token,
-            expires_at=datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            expires_at=datetime.utcnow()
+            + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         )
     except jwt.PyJWTError:
         return None
+
 
 def logout(session_id: str) -> bool:
     """
@@ -128,6 +134,7 @@ def logout(session_id: str) -> bool:
     # For now, we'll just return True
     return True
 
+
 def validate_session(session_id: str) -> bool:
     """
     Validate a session.
@@ -140,4 +147,4 @@ def validate_session(session_id: str) -> bool:
     """
     # This would typically check the session in a database
     # For now, we'll just return True
-    return True 
+    return True

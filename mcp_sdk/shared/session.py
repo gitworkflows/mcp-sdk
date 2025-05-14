@@ -33,7 +33,11 @@ from pydantic import BaseModel
 from typing_extensions import Self
 
 from mcp_sdk.shared.exceptions import McpError
-from mcp_sdk.shared.message import MessageMetadata, ServerMessageMetadata, SessionMessage
+from mcp_sdk.shared.message import (
+    MessageMetadata,
+    ServerMessageMetadata,
+    SessionMessage,
+)
 from mcp_sdk.types import (
     CancelledNotification,
     ClientNotification,
@@ -62,8 +66,10 @@ ReceiveNotificationT = TypeVar(
 
 RequestId = Union[str, int]
 
+
 class ConnectionState(Enum):
     """Represents the connection state of the session."""
+
     DISCONNECTED = auto()
     CONNECTING = auto()
     CONNECTED = auto()
@@ -71,9 +77,11 @@ class ConnectionState(Enum):
     DISCONNECTING = auto()
     ERROR = auto()
 
+
 @dataclass
 class SessionMetrics:
     """Tracks metrics for the session."""
+
     start_time: float = field(default_factory=time.monotonic)
     requests_sent: int = 0
     requests_completed: int = 0
@@ -130,7 +138,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         timeout: Optional[float] = 30.0,  # Default 30 second timeout
     ) -> None:
         """Initialize a new RequestResponder.
-        
+
         Args:
             request_id: Unique identifier for the request
             request_meta: Optional metadata for the request
@@ -150,11 +158,11 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         self._on_complete = on_complete
         self._entered = False
         self._logger = logging.getLogger(f"{__name__}.RequestResponder")
-        
+
         # Log request initiation
         self._logger.debug(
             "Initializing request responder",
-            extra={"request_id": request_id, "timeout": timeout}
+            extra={"request_id": request_id, "timeout": timeout},
         )
 
     def __enter__(self) -> "RequestResponder[ReceiveRequestT, SendResultT]":
@@ -199,7 +207,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
 
         if self._completed:
             raise AssertionError("Request was already responded to")
-            
+
         # Check for timeout
         if self._timeout and (time.monotonic() - self._start_time) > self._timeout:
             self._completed = True
@@ -211,7 +219,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         try:
             self._completed = True
             await self._session._send_response(self.request_id, response)
-            
+
             # Log successful response
             self._logger.debug(
                 "Request completed successfully",
@@ -231,21 +239,18 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     async def cancel(self) -> None:
         """
         Cancel this request and mark it as completed.
-        
+
         This will trigger the on_complete callback and clean up resources.
         """
         if self._completed:
             return
-            
-        self._logger.debug(
-            "Cancelling request",
-            extra={"request_id": self.request_id}
-        )
-        
+
+        self._logger.debug("Cancelling request", extra={"request_id": self.request_id})
+
         self._cancel_scope.cancel()
         self._completed = True
         self._on_complete(self)
-        
+
         self._logger.debug(
             "Request cancelled",
             extra={
@@ -258,7 +263,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     def in_flight(self) -> bool:
         """
         Return True if this request is still in flight.
-        
+
         Returns:
             bool: True if the request is still active and not cancelled
         """
@@ -270,7 +275,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     def cancelled(self) -> bool:
         """
         Return True if this request was cancelled.
-        
+
         Returns:
             bool: True if the request was cancelled
         """
@@ -323,7 +328,7 @@ class BaseSession(
         heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL,
     ) -> None:
         """Initialize the session.
-        
+
         Args:
             read_stream: Stream to read messages from
             write_stream: Stream to write messages to
@@ -339,22 +344,21 @@ class BaseSession(
         # Streams
         self._read_stream = read_stream
         self._write_stream = write_stream
-        
+
         # Type information
         self._receive_request_type = receive_request_type
         self._receive_notification_type = receive_notification_type
-        
+
         # Configuration
         self._session_read_timeout_seconds = (
-            read_timeout_seconds.total_seconds() 
-            if read_timeout_seconds else None
+            read_timeout_seconds.total_seconds() if read_timeout_seconds else None
         )
         self._max_in_flight = max_in_flight
         self._reconnect_attempts = reconnect_attempts
         self._reconnect_delay = reconnect_delay
         self._default_request_timeout = request_timeout
         self._heartbeat_interval = heartbeat_interval
-        
+
         # State
         self._state = ConnectionState.DISCONNECTED
         self._state_lock = asyncio.Lock()
@@ -363,69 +367,76 @@ class BaseSession(
         self._last_activity: datetime = datetime.utcnow()
         self._heartbeat_task: Optional[asyncio.Task[None]] = None
         self._reconnect_task: Optional[asyncio.Task[None]] = None
-        
+
         # Request tracking
         self._request_id = 0
-        self._response_streams: Dict[RequestId, MemoryObjectSendStream[Union[JSONRPCResponse, JSONRPCError]]] = {}
-        self._in_flight: Dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]] = {}
-        
+        self._response_streams: Dict[
+            RequestId, MemoryObjectSendStream[Union[JSONRPCResponse, JSONRPCError]]
+        ] = {}
+        self._in_flight: Dict[
+            RequestId, RequestResponder[ReceiveRequestT, SendResultT]
+        ] = {}
+
         # Metrics
         self._metrics = SessionMetrics()
         self._metrics_lock = asyncio.Lock()
-        
+
         # Logging
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._exit_stack = AsyncExitStack()
-        
-        self._logger.info("Session initialized", extra={
-            "max_in_flight": max_in_flight,
-            "request_timeout": request_timeout,
-            "reconnect_attempts": reconnect_attempts,
-        })
+
+        self._logger.info(
+            "Session initialized",
+            extra={
+                "max_in_flight": max_in_flight,
+                "request_timeout": request_timeout,
+                "reconnect_attempts": reconnect_attempts,
+            },
+        )
 
     @property
     def state(self) -> ConnectionState:
         """Get the current connection state."""
         return self._state
-        
+
     @property
     def metrics(self) -> Dict[str, Any]:
         """Get a dictionary of current metrics."""
         return self._metrics.to_dict()
-        
+
     def _get_next_request_id(self) -> int:
         """Generate the next request ID in a thread-safe manner."""
         with anyio.Lock():
             self._request_id += 1
             return self._request_id
-    
+
     async def _update_state(self, new_state: ConnectionState) -> None:
         """Update the connection state and log the transition."""
         async with self._state_lock:
             if self._state == new_state:
                 return
-                
+
             old_state = self._state
             self._state = new_state
-            
+
             # Log state transition
             self._logger.info(
                 f"Connection state changed: {old_state.name} -> {new_state.name}",
                 extra={"old_state": old_state.name, "new_state": new_state.name},
             )
-            
+
             # Update metrics
             if new_state == ConnectionState.CONNECTED:
                 async with self._metrics_lock:
                     self._metrics.last_activity = datetime.utcnow()
                     if old_state == ConnectionState.RECONNECTING:
                         self._metrics.reconnection_attempts += 1
-    
+
     async def _check_connection(self) -> bool:
         """Check if the connection is still alive."""
         if self._state != ConnectionState.CONNECTED:
             return False
-            
+
         # Check last activity time
         time_since_activity = (datetime.utcnow() - self._last_activity).total_seconds()
         if time_since_activity > self._heartbeat_interval * 2:
@@ -435,22 +446,25 @@ class BaseSession(
             )
             await self._handle_connection_error(ConnectionError("No activity detected"))
             return False
-            
+
         return True
-    
+
     async def _handle_connection_error(self, error: Exception) -> None:
         """Handle connection errors and initiate reconnection if needed."""
         async with self._state_lock:
-            if self._state in (ConnectionState.DISCONNECTING, ConnectionState.DISCONNECTED):
+            if self._state in (
+                ConnectionState.DISCONNECTING,
+                ConnectionState.DISCONNECTED,
+            ):
                 return
-                
+
             await self._update_state(ConnectionState.RECONNECTING)
-            
+
             # Update metrics
             async with self._metrics_lock:
                 self._metrics.last_error = error
                 self._metrics.request_errors += 1
-            
+
             # Cancel all in-flight requests
             for responder in list(self._in_flight.values()):
                 try:
@@ -461,140 +475,146 @@ class BaseSession(
                         extra={"request_id": responder.request_id},
                         exc_info=True,
                     )
-            
+
             # Clear response streams
             for stream in self._response_streams.values():
                 try:
                     await stream.aclose()
                 except Exception as e:
                     self._logger.warning("Error closing response stream", exc_info=True)
-            
+
             self._response_streams.clear()
-            
+
             # Start reconnection if needed
             if self._reconnect_attempts > 0:
                 self._reconnect_task = asyncio.create_task(self._reconnect_loop())
-    
+
     async def _reconnect_loop(self) -> None:
         """Handle automatic reconnection attempts."""
         attempts = 0
-        
+
         while attempts < self._reconnect_attempts:
             attempts += 1
-            
+
             try:
                 self._logger.info(
                     f"Attempting to reconnect (attempt {attempts}/{self._reconnect_attempts})",
-                    extra={"attempt": attempts, "max_attempts": self._reconnect_attempts},
+                    extra={
+                        "attempt": attempts,
+                        "max_attempts": self._reconnect_attempts,
+                    },
                 )
-                
+
                 # Reset connection state
                 await self._reset_connection()
-                
+
                 # Reinitialize the connection
                 await self._initialize_connection()
-                
+
                 # If we get here, reconnection was successful
                 await self._update_state(ConnectionState.CONNECTED)
                 self._logger.info("Reconnection successful")
                 return
-                
+
             except Exception as e:
                 self._logger.error(
                     f"Reconnection attempt {attempts} failed",
                     extra={"attempt": attempts, "error": str(e)},
                     exc_info=True,
                 )
-                
+
                 if attempts < self._reconnect_attempts:
                     await asyncio.sleep(self._reconnect_delay)
-        
+
         # If we get here, all reconnection attempts failed
         self._logger.error("All reconnection attempts failed")
         await self._update_state(ConnectionState.ERROR)
-    
+
     async def _reset_connection(self) -> None:
         """Reset connection state."""
         # Clear any existing state
         self._in_flight.clear()
-        
+
         # Close any existing streams
         for stream in self._response_streams.values():
             try:
                 await stream.aclose()
             except Exception as e:
                 self._logger.warning("Error closing stream during reset", exc_info=True)
-        
+
         self._response_streams.clear()
-    
+
     async def _initialize_connection(self) -> None:
         """Initialize a new connection."""
         # This method should be overridden by subclasses to implement
         # connection-specific initialization logic
         pass
-    
+
     async def _heartbeat_loop(self) -> None:
         """Periodically check connection health."""
         while self._state != ConnectionState.DISCONNECTED:
             try:
                 await asyncio.sleep(self._heartbeat_interval)
-                
+
                 if not await self._check_connection():
                     continue
-                    
+
                 # Send heartbeat if needed
-                if self._last_heartbeat is None or \
-                   (datetime.utcnow() - self._last_heartbeat).total_seconds() > self._heartbeat_interval:
+                if (
+                    self._last_heartbeat is None
+                    or (datetime.utcnow() - self._last_heartbeat).total_seconds()
+                    > self._heartbeat_interval
+                ):
                     try:
                         await self.send_heartbeat()
                         self._last_heartbeat = datetime.utcnow()
                     except Exception as e:
                         self._logger.warning("Failed to send heartbeat", exc_info=True)
                         await self._handle_connection_error(e)
-                        
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 self._logger.error("Error in heartbeat loop", exc_info=True)
                 await asyncio.sleep(1)  # Prevent tight error loops
-    
+
     async def send_heartbeat(self) -> None:
         """Send a heartbeat message to keep the connection alive."""
         # This method should be overridden by subclasses to implement
         # protocol-specific heartbeat logic
         pass
-    
+
     async def __aenter__(self) -> Self:
         """Enter the async context manager and start the session."""
         async with self._state_lock:
             if self._state != ConnectionState.DISCONNECTED:
                 raise RuntimeError("Session is already active")
-                
+
             await self._update_state(ConnectionState.CONNECTING)
             self._connection_attempts = 0
-            
+
             # Create task group for background tasks
             self._task_group = anyio.create_task_group()
             await self._task_group.__aenter__()
-            
+
             try:
                 # Start the receive loop
                 self._task_group.start_soon(self._receive_loop)
-                
+
                 # Start heartbeat if enabled
                 if self._heartbeat_interval > 0:
                     self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-                
+
                 await self._update_state(ConnectionState.CONNECTED)
                 self._connection_attempts = 0
                 self._logger.info("Session started successfully")
-                
+
             except Exception as e:
                 await self._update_state(ConnectionState.ERROR)
                 self._logger.error("Failed to start session", exc_info=True)
                 await self._task_group.__aexit__(type(e), e, e.__traceback__)
                 raise
-                
+
         return self
 
     async def __aexit__(
@@ -605,14 +625,14 @@ class BaseSession(
     ) -> Optional[bool]:
         """Exit the async context manager and clean up resources."""
         self._logger.info("Shutting down session...")
-        
+
         # Update state
         async with self._state_lock:
             if self._state == ConnectionState.DISCONNECTED:
                 return None
-                
+
             await self._update_state(ConnectionState.DISCONNECTING)
-        
+
         # Cancel background tasks
         if self._heartbeat_task and not self._heartbeat_task.done():
             self._heartbeat_task.cancel()
@@ -620,37 +640,37 @@ class BaseSession(
                 await self._heartbeat_task
             except asyncio.CancelledError:
                 pass
-                
+
         if self._reconnect_task and not self._reconnect_task.done():
             self._reconnect_task.cancel()
             try:
                 await self._reconnect_task
             except asyncio.CancelledError:
                 pass
-        
+
         # Clean up task group
-        if hasattr(self, '_task_group') and self._task_group:
+        if hasattr(self, "_task_group") and self._task_group:
             self._task_group.cancel_scope.cancel()
             await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
-        
+
         # Close all response streams
         for stream in self._response_streams.values():
             try:
                 await stream.aclose()
             except Exception as e:
                 self._logger.warning("Error closing response stream", exc_info=True)
-        
+
         # Clean up state
         self._response_streams.clear()
         self._in_flight.clear()
-        
+
         # Update metrics
         async with self._metrics_lock:
             self._metrics.last_activity = datetime.utcnow()
-        
+
         await self._update_state(ConnectionState.DISCONNECTED)
         self._logger.info("Session shutdown complete")
-        
+
         return None
 
     async def send_request(
@@ -682,7 +702,9 @@ class BaseSession(
         """
         # Validate connection state
         if self.state != ConnectionState.CONNECTED:
-            raise MCPConnectionError(f"Cannot send request: session is {self.state.name}")
+            raise MCPConnectionError(
+                f"Cannot send request: session is {self.state.name}"
+            )
 
         # Check in-flight limit
         if len(self._in_flight) >= self._max_in_flight:
@@ -694,14 +716,17 @@ class BaseSession(
         # Determine timeout
         timeout_seconds = (
             timeout
-            or (request_read_timeout_seconds.total_seconds() 
-                if request_read_timeout_seconds else None)
+            or (
+                request_read_timeout_seconds.total_seconds()
+                if request_read_timeout_seconds
+                else None
+            )
             or self._default_request_timeout
         )
 
         # Generate request ID
         request_id = self._get_next_request_id()
-        
+
         # Log request initiation
         self._logger.debug(
             "Sending request",
@@ -716,7 +741,7 @@ class BaseSession(
         response_stream, response_stream_reader = anyio.create_memory_object_stream[
             Union[JSONRPCResponse, JSONRPCError]
         ](1)
-        
+
         # Update metrics
         async with self._metrics_lock:
             self._metrics.requests_sent += 1
@@ -745,7 +770,7 @@ class BaseSession(
             try:
                 with anyio.fail_after(timeout_seconds):
                     response_or_error = await response_stream_reader.receive()
-                    
+
                     # Update metrics
                     async with self._metrics_lock:
                         self._metrics.requests_completed += 1
@@ -761,7 +786,7 @@ class BaseSession(
                             },
                         )
                         raise McpError(response_or_error.error)
-                    
+
                     # Validate response type
                     try:
                         return result_type.model_validate(response_or_error.result)
@@ -805,11 +830,11 @@ class BaseSession(
                 async with self._metrics_lock:
                     self._metrics.request_errors += 1
                     self._metrics.last_error = e
-                
+
                 # Trigger reconnection if needed
                 if self.state == ConnectionState.CONNECTED:
                     await self._handle_connection_error(e)
-                
+
                 raise MCPConnectionError(f"Failed to send request: {str(e)}") from e
             raise
 
@@ -836,12 +861,16 @@ class BaseSession(
             MCPConnectionError: If there's a connection issue
         """
         if self.state != ConnectionState.CONNECTED:
-            raise MCPConnectionError(f"Cannot send notification: session is {self.state.name}")
+            raise MCPConnectionError(
+                f"Cannot send notification: session is {self.state.name}"
+            )
 
         try:
             jsonrpc_notification = JSONRPCNotification(
                 jsonrpc="2.0",
-                **notification.model_dump(by_alias=True, mode="json", exclude_none=True),
+                **notification.model_dump(
+                    by_alias=True, mode="json", exclude_none=True
+                ),
             )
 
             # Update metrics
@@ -852,12 +881,14 @@ class BaseSession(
             await self._send_message(
                 SessionMessage(
                     message=JSONRPCMessage(jsonrpc_notification),
-                    metadata=MessageMetadata(
-                        relatedRequestId=related_request_id
-                    ) if related_request_id is not None else None,
+                    metadata=(
+                        MessageMetadata(relatedRequestId=related_request_id)
+                        if related_request_id is not None
+                        else None
+                    ),
                 )
             )
-            
+
             self._logger.debug(
                 "Sent notification",
                 extra={
@@ -865,71 +896,73 @@ class BaseSession(
                     "related_request_id": related_request_id,
                 },
             )
-            
+
         except Exception as e:
             self._logger.error(
                 "Error sending notification",
                 extra={"notification_type": type(notification).__name__},
                 exc_info=True,
             )
-            
+
             # Update metrics
             async with self._metrics_lock:
                 self._metrics.last_error = e
-                
+
             # Trigger reconnection if needed
             if self.state == ConnectionState.CONNECTED:
                 await self._handle_connection_error(e)
-                
+
             raise MCPConnectionError(f"Failed to send notification: {str(e)}") from e
 
     async def _send_message(self, message: SessionMessage) -> None:
         """
         Send a message through the write stream.
-        
+
         Args:
             message: The message to send
-            
+
         Raises:
             MCPConnectionError: If there's an error sending the message
         """
         try:
             await self._write_stream.send(message)
-            
+
             # Update metrics
             async with self._metrics_lock:
-                self._metrics.bytes_sent += len(str(message).encode('utf-8'))
+                self._metrics.bytes_sent += len(str(message).encode("utf-8"))
                 self._metrics.last_activity = datetime.utcnow()
-                
+
         except Exception as e:
             self._logger.error("Error sending message", exc_info=True)
-            
+
             # Update metrics
             async with self._metrics_lock:
                 self._metrics.last_error = e
-                
+
             # Trigger reconnection if needed
             if self.state == ConnectionState.CONNECTED:
                 await self._handle_connection_error(e)
-                
+
             raise MCPConnectionError(f"Failed to send message: {str(e)}") from e
-    
+
     async def _send_response(
         self, request_id: RequestId, response: Union[SendResultT, ErrorData]
     ) -> None:
         """
         Send a response for a request.
-        
+
         Args:
             request_id: The ID of the request being responded to
             response: The response data or error
-            
+
         Raises:
             MCPConnectionError: If there's an error sending the response
         """
         try:
             if isinstance(response, ErrorData):
-                jsonrpc_error = JSONRPCError(jsonrpc="2.0", id=request_id, error=response)
+                jsonrpc_error = JSONRPCError(
+                    jsonrpc="2.0", id=request_id, error=response
+                )
                 session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_error))
             else:
                 jsonrpc_response = JSONRPCResponse(
@@ -939,10 +972,12 @@ class BaseSession(
                         by_alias=True, mode="json", exclude_none=True
                     ),
                 )
-                session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_response))
-            
+                session_message = SessionMessage(
+                    message=JSONRPCMessage(jsonrpc_response)
+                )
+
             await self._send_message(session_message)
-            
+
             self._logger.debug(
                 "Sent response",
                 extra={
@@ -950,7 +985,7 @@ class BaseSession(
                     "is_error": isinstance(response, ErrorData),
                 },
             )
-            
+
         except Exception as e:
             self._logger.error(
                 "Error sending response",
@@ -962,37 +997,37 @@ class BaseSession(
     async def _receive_loop(self) -> None:
         """Main receive loop for processing incoming messages."""
         self._logger.debug("Starting receive loop")
-        
+
         while self.state != ConnectionState.DISCONNECTED:
             try:
                 async with anyio.fail_after(
-                    self._session_read_timeout_seconds 
-                    if self._session_read_timeout_seconds 
+                    self._session_read_timeout_seconds
+                    if self._session_read_timeout_seconds
                     else None
                 ):
                     # Wait for next message
                     message = await self._read_stream.receive()
-                    
+
                     # Update last activity
                     self._last_activity = datetime.utcnow()
                     async with self._metrics_lock:
                         self._metrics.last_activity = self._last_activity
-                    
+
                     # Process message based on type
                     if isinstance(message, Exception):
                         self._logger.error("Error in receive stream", exc_info=message)
                         await self._handle_connection_error(message)
                         continue
-                        
+
                     if not isinstance(message, SessionMessage) or not message.message:
                         self._logger.warning("Received invalid message format")
                         continue
-                    
+
                     # Update metrics
                     if isinstance(message.message.root, JSONRPCNotification):
                         async with self._metrics_lock:
                             self._metrics.notifications_received += 1
-                    
+
                     # Handle different message types
                     if isinstance(message.message.root, JSONRPCRequest):
                         await self._handle_incoming_request(message)
@@ -1000,7 +1035,7 @@ class BaseSession(
                         await self._handle_notification(message)
                     else:  # Response or error
                         await self._handle_response(message)
-                        
+
             except TimeoutError:
                 # Handle read timeout
                 if self.state == ConnectionState.CONNECTED:
@@ -1012,9 +1047,9 @@ class BaseSession(
                     await self._handle_connection_error(e)
                 # Add small delay to prevent tight error loops
                 await asyncio.sleep(1)
-        
+
         self._logger.info("Receive loop exiting")
-    
+
     async def _handle_incoming_request(self, message: SessionMessage) -> None:
         """Handle an incoming request message."""
         try:
@@ -1027,9 +1062,11 @@ class BaseSession(
             # Create responder with timeout
             responder = RequestResponder(
                 request_id=message.message.root.id,
-                request_meta=validated_request.root.params.meta
-                if validated_request.root.params
-                else None,
+                request_meta=(
+                    validated_request.root.params.meta
+                    if validated_request.root.params
+                    else None
+                ),
                 request=validated_request,
                 session=self,
                 on_complete=lambda r: self._in_flight.pop(r.request_id, None),
@@ -1038,21 +1075,21 @@ class BaseSession(
 
             # Track in-flight request
             self._in_flight[responder.request_id] = responder
-            
+
             # Process the request
             await self._received_request(responder)
 
             if not responder._completed:  # type: ignore[reportPrivateUsage]
                 await self._handle_incoming(responder)
-                
+
         except Exception as e:
             self._logger.error(
                 "Error handling incoming request",
-                extra={"request_id": getattr(message.message.root, 'id', None)},
+                extra={"request_id": getattr(message.message.root, "id", None)},
                 exc_info=True,
             )
             # Send error response if we have a request ID
-            if hasattr(message.message.root, 'id'):
+            if hasattr(message.message.root, "id"):
                 await self._send_response(
                     message.message.root.id,
                     ErrorData(
@@ -1060,7 +1097,7 @@ class BaseSession(
                         message=f"Error processing request: {str(e)}",
                     ),
                 )
-    
+
     async def _handle_notification(self, message: SessionMessage) -> None:
         """Handle an incoming notification message."""
         try:
@@ -1069,7 +1106,7 @@ class BaseSession(
                     by_alias=True, mode="json", exclude_none=True
                 )
             )
-            
+
             # Handle cancellation notifications
             if isinstance(notification.root, CancelledNotification):
                 cancelled_id = notification.root.params.requestId
@@ -1078,14 +1115,14 @@ class BaseSession(
             else:
                 await self._received_notification(notification)
                 await self._handle_incoming(notification)
-                
+
         except Exception as e:
             self._logger.error(
                 "Error handling notification",
-                extra={"method": getattr(message.message.root, 'method', None)},
+                extra={"method": getattr(message.message.root, "method", None)},
                 exc_info=True,
             )
-    
+
     async def _handle_response(self, message: SessionMessage) -> None:
         """Handle an incoming response or error message."""
         stream = self._response_streams.pop(message.message.root.id, None)
@@ -1137,23 +1174,28 @@ class BaseSession(
         pass
 
     async def send_progress_notification(
-        self, progress_token: Union[str, int], progress: float, total: Optional[float] = None
+        self,
+        progress_token: Union[str, int],
+        progress: float,
+        total: Optional[float] = None,
     ) -> None:
         """
         Sends a progress notification for a request that is currently being
         processed.
-        
+
         Args:
             progress_token: A token to identify the progress notification
             progress: Current progress value
             total: Optional total value for calculating percentage
-            
+
         Raises:
             MCPConnectionError: If there's a connection issue
         """
         if self.state != ConnectionState.CONNECTED:
-            raise MCPConnectionError(f"Cannot send progress: session is {self.state.name}")
-            
+            raise MCPConnectionError(
+                f"Cannot send progress: session is {self.state.name}"
+            )
+
         try:
             notification = ProgressNotification(
                 params=ProgressParams(
@@ -1162,9 +1204,9 @@ class BaseSession(
                     total=total,
                 )
             )
-            
+
             await self.send_notification(notification)
-            
+
             self._logger.debug(
                 "Sent progress notification",
                 extra={
@@ -1173,22 +1215,22 @@ class BaseSession(
                     "total": total,
                 },
             )
-            
+
         except Exception as e:
             self._logger.error(
                 "Error sending progress notification",
                 extra={"progress_token": progress_token},
                 exc_info=True,
             )
-            
+
             # Update metrics
             async with self._metrics_lock:
                 self._metrics.last_error = e
-                
+
             # Trigger reconnection if needed
             if self.state == ConnectionState.CONNECTED:
                 await self._handle_connection_error(e)
-                
+
             raise MCPConnectionError(f"Failed to send progress: {str(e)}") from e
 
     async def _handle_incoming(
@@ -1201,7 +1243,7 @@ class BaseSession(
     ) -> None:
         """
         A generic handler for incoming messages. Overwritten by subclasses.
-        
+
         Args:
             req: The incoming message, which can be a request responder,
                  notification, or exception

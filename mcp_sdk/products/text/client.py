@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any
 from ...client import MCPClient
 from .models import TextRequest, TextResponse
 
+
 class TextClient:
     """Client for text processing operations"""
 
@@ -25,10 +26,7 @@ class TextClient:
         Returns:
             TextResponse: The generated text response
         """
-        request = TextRequest(
-            prompt=prompt,
-            **kwargs
-        )
+        request = TextRequest(prompt=prompt, **kwargs)
         response = self.client.send(request.dict())
         return TextResponse(**response)
 
@@ -44,8 +42,7 @@ class TextClient:
             TextResponse: The summary response
         """
         request = TextRequest(
-            prompt=f"Summarize the following text:\n\n{text}",
-            **kwargs
+            prompt=f"Summarize the following text:\n\n{text}", **kwargs
         )
         response = self.client.send(request.dict())
         return TextResponse(**response)
@@ -64,7 +61,7 @@ class TextClient:
         """
         request = TextRequest(
             prompt=f"Translate the following text to {target_language}:\n\n{text}",
-            **kwargs
+            **kwargs,
         )
         response = self.client.send(request.dict())
         return TextResponse(**response)
@@ -81,8 +78,7 @@ class TextClient:
             TextResponse: The sentiment analysis response
         """
         request = TextRequest(
-            prompt=f"Analyze the sentiment of the following text:\n\n{text}",
-            **kwargs
+            prompt=f"Analyze the sentiment of the following text:\n\n{text}", **kwargs
         )
         response = self.client.send(request.dict())
         return TextResponse(**response)
@@ -99,8 +95,7 @@ class TextClient:
             TextResponse: The keywords extraction response
         """
         request = TextRequest(
-            prompt=f"Extract keywords from the following text:\n\n{text}",
-            **kwargs
+            prompt=f"Extract keywords from the following text:\n\n{text}", **kwargs
         )
         response = self.client.send(request.dict())
-        return TextResponse(**response) 
+        return TextResponse(**response)

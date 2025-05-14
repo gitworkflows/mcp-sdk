@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uuid
@@ -21,7 +21,7 @@ from .messages import (
     TextResult,
     TextMessage,
     TextResponse,
-    TextHandler
+    TextHandler,
 )
 from .server_utils.runner import ServerRunner
 
@@ -55,6 +55,7 @@ class MCPServer:
 
     def _create_app(self) -> FastAPI:
         """Create the FastAPI application with lifespan support"""
+
         @asynccontextmanager
         async def lifespan(app: FastAPI):
             # Startup
@@ -80,7 +81,7 @@ class MCPServer:
             title="MCP Server",
             description="Media Control Protocol Server",
             version="1.0.0",
-            lifespan=lifespan
+            lifespan=lifespan,
         )
 
     def _setup_middleware(self):
@@ -95,10 +96,12 @@ class MCPServer:
 
     def _setup_routes(self):
         """Setup API routes"""
+
         @self.app.post("/api/v1/process", response_model=MCPResponse)
         async def process_request(
-            request: MCPRequest,
-            client_info: ClientInfo = Depends(self._get_client_info)
+            request_data: MCPRequest,
+            request: Request,
+            client_info: ClientInfo = Depends(lambda: self._get_client_info(request)),
         ) -> MCPResponse:
             """
             Process an MCP request.
@@ -112,11 +115,11 @@ class MCPServer:
             """
             try:
                 # Convert MCPRequest to typed message
-                message = self._create_message(request, client_info)
-                
+                message = self._create_message(request_data, client_info)
+
                 # Process the message
                 response = await self.message_processor.process(message)
-                
+
                 # Convert response to MCPResponse
                 return self._create_mcp_response(response)
             except MCPError as e:
@@ -125,7 +128,9 @@ class MCPServer:
                 logger.error(f"Request processing failed: {str(e)}")
                 raise HTTPException(status_code=500, detail="Internal server error")
 
-    def _create_message(self, request: MCPRequest, client_info: ClientInfo) -> BaseMessage:
+    def _create_message(
+        self, request: MCPRequest, client_info: ClientInfo
+    ) -> BaseMessage:
         """Create a typed message from MCPRequest"""
         metadata = MessageMetadata(
             source=client_info.name,
@@ -133,8 +138,8 @@ class MCPServer:
             tags=["mcp"],
             custom_data={
                 "client_version": client_info.version,
-                "platform": client_info.platform
-            }
+                "platform": client_info.platform,
+            },
         )
 
         # Create appropriate message type based on request
@@ -147,21 +152,21 @@ class MCPServer:
                 temperature=request.metadata.get("temperature", 0.7),
                 top_p=request.metadata.get("top_p"),
                 frequency_penalty=request.metadata.get("frequency_penalty"),
-                presence_penalty=request.metadata.get("presence_penalty")
+                presence_penalty=request.metadata.get("presence_penalty"),
             )
 
             # Create context with parameters
             context = MessageContext[TextParameters](
                 content=request.context,
                 parameters=parameters,
-                metadata=request.metadata
+                metadata=request.metadata,
             )
 
             # Create content
             content = TextContent(
                 text=request.context,
                 language=parameters.language,
-                format=parameters.format
+                format=parameters.format,
             )
 
             return TextMessage(
@@ -169,7 +174,7 @@ class MCPServer:
                 type=MessageType.TEXT,
                 content=content,
                 context=context,
-                metadata=metadata
+                metadata=metadata,
             )
         else:
             raise MCPError(f"Unsupported model type: {request.model}")
@@ -182,19 +187,23 @@ class MCPServer:
             content=str(response.result),
             created_at=response.created_at.isoformat(),
             usage={"tokens": 0},  # Update with actual usage
-            metadata=response.metadata.custom_data
+            metadata=response.metadata.custom_data,
         )
 
-    async def _get_client_info(self) -> ClientInfo:
+    async def _get_client_info(self, request: Request) -> ClientInfo:
         """Get client information from request headers"""
-        # This is a placeholder - implement actual client info extraction
+        headers = request.headers
         return ClientInfo(
-            name="default",
-            version="1.0.0",
-            platform="unknown",
-            language="python",
-            language_version="3.8",
-            sdk_version="0.1.0"
+            name=headers.get("x-client-name", "unknown"),
+            version=headers.get("x-client-version", "1.0.0"),
+            platform=headers.get("x-client-platform", "unknown"),
+            environment=headers.get("x-client-environment", "production"),
+            language=headers.get("x-client-language", "python"),
+            language_version=headers.get("x-client-language-version", "3.8"),
+            sdk_version=headers.get("x-client-sdk-version", "0.1.0"),
+            client_id=headers.get("x-client-id"),
+            user_agent=headers.get("user-agent"),
+            ip_address=request.client.host if request.client else None,
         )
 
     async def _startup(self):
@@ -207,4 +216,4 @@ class MCPServer:
 
     def run(self):
         """Run the server"""
-        self.runner.run() 
+        self.runner.run()

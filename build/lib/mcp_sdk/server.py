@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uuid
@@ -97,8 +97,9 @@ class MCPServer:
         """Setup API routes"""
         @self.app.post("/api/v1/process", response_model=MCPResponse)
         async def process_request(
-            request: MCPRequest,
-            client_info: ClientInfo = Depends(self._get_client_info)
+            request_data: MCPRequest,
+            request: Request,
+            client_info: ClientInfo = Depends(lambda: self._get_client_info(request))
         ) -> MCPResponse:
             """
             Process an MCP request.
@@ -112,7 +113,7 @@ class MCPServer:
             """
             try:
                 # Convert MCPRequest to typed message
-                message = self._create_message(request, client_info)
+                message = self._create_message(request_data, client_info)
                 
                 # Process the message
                 response = await self.message_processor.process(message)
@@ -185,16 +186,20 @@ class MCPServer:
             metadata=response.metadata.custom_data
         )
 
-    async def _get_client_info(self) -> ClientInfo:
+    async def _get_client_info(self, request: Request) -> ClientInfo:
         """Get client information from request headers"""
-        # This is a placeholder - implement actual client info extraction
+        headers = request.headers
         return ClientInfo(
-            name="default",
-            version="1.0.0",
-            platform="unknown",
-            language="python",
-            language_version="3.8",
-            sdk_version="0.1.0"
+            name=headers.get("x-client-name", "unknown"),
+            version=headers.get("x-client-version", "1.0.0"),
+            platform=headers.get("x-client-platform", "unknown"),
+            environment=headers.get("x-client-environment", "production"),
+            language=headers.get("x-client-language", "python"),
+            language_version=headers.get("x-client-language-version", "3.8"),
+            sdk_version=headers.get("x-client-sdk-version", "0.1.0"),
+            client_id=headers.get("x-client-id"),
+            user_agent=headers.get("user-agent"),
+            ip_address=request.client.host if request.client else None
         )
 
     async def _startup(self):

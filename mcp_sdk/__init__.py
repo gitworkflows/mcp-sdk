@@ -13,18 +13,13 @@ from mcp_sdk.exceptions import (
     MCPTimeoutError,
     MCPResourceNotFoundError,
     MCPPermissionError,
-    MCPConfigurationError
+    MCPConfigurationError,
 )
 from mcp_sdk.server import MCPServer
 from mcp_sdk.server_config import ServerConfig
 
 # Import product-specific modules
-from mcp_sdk.products import (
-    text,
-    image,
-    audio,
-    video
-)
+from mcp_sdk.products import text, image, audio, video
 
 __version__ = "0.1.0"
 __all__ = [
@@ -45,5 +40,5 @@ __all__ = [
     "text",
     "image",
     "audio",
-    "video"
-] 
+    "video",
+]

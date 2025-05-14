@@ -6,7 +6,16 @@ from urllib3.util.retry import Retry
 from datetime import datetime
 from pydantic import BaseModel, Field, validator
 
-from .models import MCPRequest, MCPResponse, ClientInfo, ClientConfig, Commit, CommitResponse, ServerOptions, CommitRequest
+from .models import (
+    MCPRequest,
+    MCPResponse,
+    ClientInfo,
+    ClientConfig,
+    Commit,
+    CommitResponse,
+    ServerOptions,
+    CommitRequest,
+)
 from .resources import (
     ResourceResponse,
     PaginatedResponse,
@@ -14,7 +23,7 @@ from .resources import (
     ResourceQuery,
     ResourceCreate,
     ResourceUpdate,
-    ResourceDelete
+    ResourceDelete,
 )
 from .exceptions import (
     MCPError,
@@ -25,15 +34,17 @@ from .exceptions import (
     MCPTimeoutError,
     MCPResourceNotFoundError,
     MCPPermissionError,
-    MCPConfigurationError
+    MCPConfigurationError,
 )
 
 # Type variables for generic request/response handling
-T = TypeVar('T', bound=BaseModel)
-R = TypeVar('R', bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)
+R = TypeVar("R", bound=BaseModel)
+
 
 class RequestOptions(BaseModel):
     """Options for API requests"""
+
     timeout: int = Field(default=30, gt=0)
     retry_count: int = Field(default=3, ge=0)
     retry_backoff_factor: float = Field(default=0.5, ge=0.0)
@@ -41,23 +52,36 @@ class RequestOptions(BaseModel):
         default_factory=lambda: [500, 502, 503, 504, 408, 429]
     )
     retry_methods: List[str] = Field(
-        default_factory=lambda: ['HEAD', 'GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'TRACE']
+        default_factory=lambda: [
+            "HEAD",
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS",
+            "TRACE",
+        ]
     )
     headers: Dict[str, str] = Field(default_factory=dict)
     verify_ssl: bool = Field(default=True)
 
+
 class ResponseMetadata(BaseModel):
     """Metadata for API responses"""
+
     request_id: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     status_code: int
     headers: Dict[str, str]
     elapsed: float
 
+
 class TypedResponse(BaseModel, Generic[R]):
     """Typed response wrapper"""
+
     data: R
     metadata: ResponseMetadata
+
 
 class MCPClient:
     """Client for interacting with the MCP API"""
@@ -68,7 +92,7 @@ class MCPClient:
         endpoint: str,
         client_info: Optional[Union[ClientInfo, Dict[str, Any]]] = None,
         config: Optional[ClientConfig] = None,
-        options: Optional[RequestOptions] = None
+        options: Optional[RequestOptions] = None,
     ):
         """
         Initialize the MCP client.
@@ -87,19 +111,18 @@ class MCPClient:
             raise MCPConfigurationError("API key is required", setting="api_key")
         if not endpoint:
             raise MCPConfigurationError("Endpoint is required", setting="endpoint")
-            
+
         self.api_key = api_key
-        self.endpoint = endpoint.rstrip('/')
+        self.endpoint = endpoint.rstrip("/")
         self._client_info = self._validate_client_info(client_info)
-        self.config = config or ClientConfig(
-            api_key=api_key,
-            endpoint=endpoint
-        )
+        self.config = config or ClientConfig(api_key=api_key, endpoint=endpoint)
         self.options = options or RequestOptions()
-        
+
         self.session = self._create_session()
 
-    def _validate_client_info(self, client_info: Optional[Union[ClientInfo, Dict[str, Any]]] = None) -> ClientInfo:
+    def _validate_client_info(
+        self, client_info: Optional[Union[ClientInfo, Dict[str, Any]]] = None
+    ) -> ClientInfo:
         """
         Validate and create client information.
 
@@ -111,10 +134,10 @@ class MCPClient:
         """
         if client_info is None:
             return self._create_default_client_info()
-            
+
         if isinstance(client_info, dict):
             # Ensure required fields are present
-            required_fields = ['name', 'version', 'language_version', 'sdk_version']
+            required_fields = ["name", "version", "language_version", "sdk_version"]
             for field in required_fields:
                 if field not in client_info:
                     client_info[field] = self._get_default_client_field(field)
@@ -124,9 +147,9 @@ class MCPClient:
         else:
             raise MCPConfigurationError(
                 "client_info must be either a dict or ClientInfo object",
-                setting="client_info"
+                setting="client_info",
             )
-    
+
     def _get_default_client_field(self, field: str) -> str:
         """Get default value for a client info field"""
         defaults = {
@@ -136,10 +159,10 @@ class MCPClient:
             "environment": "production",
             "language": "python",
             "language_version": "3.8",
-            "sdk_version": "0.1.0"
+            "sdk_version": "0.1.0",
         }
         return defaults.get(field, "")
-    
+
     def _create_default_client_info(self) -> ClientInfo:
         """Create default client information"""
         return ClientInfo(
@@ -149,14 +172,14 @@ class MCPClient:
             environment="production",
             language="python",
             language_version="3.8",
-            sdk_version="0.1.0"
+            sdk_version="0.1.0",
         )
 
     def _create_session(self) -> requests.Session:
         """Create a requests session with enhanced retry logic"""
         try:
             session = requests.Session()
-            
+
             retry_strategy = Retry(
                 total=self.options.retry_count,
                 backoff_factor=self.options.retry_backoff_factor,
@@ -164,9 +187,9 @@ class MCPClient:
                 allowed_methods=self.options.retry_methods,
                 jitter=0.1,
                 respect_retry_after_header=True,
-                raise_on_status=True
+                raise_on_status=True,
             )
-            
+
             adapter = HTTPAdapter(max_retries=retry_strategy)
             session.mount("http://", adapter)
             session.mount("https://", adapter)
@@ -178,18 +201,18 @@ class MCPClient:
     def client_info(self) -> ClientInfo:
         """Get the current client info"""
         return self._client_info
-    
+
     def update_client_info(self, **kwargs) -> None:
         """
         Update client information with the provided fields.
-        
+
         Args:
             **kwargs: Fields to update in client info
         """
         current_info = self._client_info.dict()
         current_info.update({k: v for k, v in kwargs.items() if v is not None})
         self._client_info = ClientInfo(**current_info)
-    
+
     def _prepare_headers(self) -> Dict[str, str]:
         """Prepare headers for API requests"""
         headers = {
@@ -201,52 +224,48 @@ class MCPClient:
             "X-Client-Environment": self._client_info.environment,
             "X-Client-Language": self._client_info.language,
             "X-Client-Language-Version": self._client_info.language_version,
-            "X-Client-SDK-Version": self._client_info.sdk_version
+            "X-Client-SDK-Version": self._client_info.sdk_version,
         }
-        
+
         # Add client ID if available
         if self._client_info.client_id:
             headers["X-Client-ID"] = self._client_info.client_id
-            
+
         # Add custom headers from options
         headers.update(self.options.headers)
         return headers
 
     def _handle_response(
-        self,
-        response: requests.Response,
-        response_type: Type[R]
+        self, response: requests.Response, response_type: Type[R]
     ) -> Union[ResourceResponse[R], PaginatedResponse[R], ResourceErrorResponse]:
         """Handle API response and return standardized resource response"""
         try:
             response.raise_for_status()
             response_data = response.json()
-            
+
             # Check if it's a paginated response
-            if isinstance(response_data, dict) and 'pagination' in response_data:
+            if isinstance(response_data, dict) and "pagination" in response_data:
                 return PaginatedResponse[R](**response_data)
-            
+
             # Check if it's a single resource response
-            if isinstance(response_data, dict) and 'data' in response_data:
+            if isinstance(response_data, dict) and "data" in response_data:
                 return ResourceResponse[R](**response_data)
-            
+
             # Handle error response
-            if isinstance(response_data, dict) and 'errors' in response_data:
+            if isinstance(response_data, dict) and "errors" in response_data:
                 return ResourceErrorResponse(**response_data)
-            
+
             # Handle raw response
             return ResourceResponse[R](
                 data=response_type(**response_data),
                 metadata=ResourceMetadata(
                     id=str(response.headers.get("X-Request-ID", "")),
                     version="1.0",
-                    status="success"
+                    status="success",
                 ),
-                links=ResourceLinks(
-                    self=response.url
-                )
+                links=ResourceLinks(self=response.url),
             )
-            
+
         except requests.exceptions.RequestException as e:
             error_response = None
             try:
@@ -258,59 +277,57 @@ class MCPClient:
                 raise MCPConnectionError(
                     "Failed to connect to MCP API",
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
             elif isinstance(e, requests.exceptions.Timeout):
                 raise MCPTimeoutError(
                     "Request timed out",
                     timeout=self.options.timeout,
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
             elif response.status_code == 401:
                 raise MCPAuthenticationError(
                     "Invalid API key",
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
             elif response.status_code == 403:
                 raise MCPPermissionError(
                     "Permission denied",
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
             elif response.status_code == 404:
                 raise MCPResourceNotFoundError(
                     "Resource not found",
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
             elif response.status_code == 422:
                 raise MCPValidationError(
                     "Invalid request parameters",
                     validation_errors=error_response,
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
             elif response.status_code == 429:
-                retry_after = response.headers.get('Retry-After')
+                retry_after = response.headers.get("Retry-After")
                 raise MCPRateLimitError(
                     "Rate limit exceeded",
                     retry_after=int(retry_after) if retry_after else None,
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
             else:
                 raise MCPError(
                     f"API request failed: {str(e)}",
                     status_code=response.status_code,
-                    response=error_response
+                    response=error_response,
                 ) from e
 
     async def send(
-        self,
-        request: MCPRequest,
-        response_type: Type[R] = MCPResponse
+        self, request: MCPRequest, response_type: Type[R] = MCPResponse
     ) -> Union[ResourceResponse[R], PaginatedResponse[R], ResourceErrorResponse]:
         """
         Send a request to the MCP API.
@@ -343,7 +360,7 @@ class MCPClient:
                 json=request_data,
                 headers=self._prepare_headers(),
                 timeout=self.options.timeout,
-                verify=self.options.verify_ssl
+                verify=self.options.verify_ssl,
             )
 
             # Handle response
@@ -365,7 +382,7 @@ class MCPClient:
         self,
         sha: str,
         options: Optional[ServerOptions] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> ResourceResponse[Commit]:
         """
         Get a single commit with configurable options.
@@ -384,11 +401,7 @@ class MCPClient:
         """
         try:
             # Prepare request data
-            request = CommitRequest(
-                sha=sha,
-                options=options,
-                metadata=metadata
-            )
+            request = CommitRequest(sha=sha, options=options, metadata=metadata)
 
             # Make the request
             response = self.session.get(
@@ -396,7 +409,7 @@ class MCPClient:
                 json=request.dict(),
                 headers=self._prepare_headers(),
                 timeout=self.options.timeout,
-                verify=self.options.verify_ssl
+                verify=self.options.verify_ssl,
             )
 
             # Handle response
@@ -407,4 +420,4 @@ class MCPClient:
         except Exception as e:
             if not isinstance(e, MCPError):
                 raise MCPError(f"Failed to get commit: {str(e)}") from e
-            raise 
+            raise

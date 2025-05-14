@@ -13,6 +13,7 @@ from .config import ConfigManager, MCPConfig
 from .schema import SchemaManager
 from .exceptions import MCPError
 
+
 class MCPCLI:
     """CLI tool for interacting with MCP servers"""
 
@@ -38,7 +39,7 @@ class MCPCLI:
                     timeout=self.config.timeout,
                     max_retries=self.config.max_retries,
                     retry_backoff_factor=self.config.retry_backoff_factor,
-                    verify_ssl=self.config.verify_ssl
+                    verify_ssl=self.config.verify_ssl,
                 )
                 self._load_schemas()
             except Exception as e:
@@ -48,10 +49,9 @@ class MCPCLI:
     def _load_schemas(self):
         """Load command schemas from the MCP server"""
         try:
-            response = self.client.send({
-                "type": "get_schemas",
-                "options": {"include_raw": True}
-            })
+            response = self.client.send(
+                {"type": "get_schemas", "options": {"include_raw": True}}
+            )
             self.schema_manager = SchemaManager(response.data)
         except Exception as e:
             self.console.print(f"[red]Error loading schemas: {str(e)}[/red]")
@@ -61,7 +61,7 @@ class MCPCLI:
         """Build the argument parser"""
         parser = argparse.ArgumentParser(
             description="MCP CLI Tool",
-            formatter_class=argparse.RawDescriptionHelpFormatter
+            formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -71,27 +71,28 @@ class MCPCLI:
             subparser = subparsers.add_parser(
                 command_name,
                 help=schema.description,
-                formatter_class=argparse.RawDescriptionHelpFormatter
+                formatter_class=argparse.RawDescriptionHelpFormatter,
             )
 
-            # Add arguments
+            # Add arguments (positional)
             for arg_name, arg_schema in schema.arguments.items():
+                # Positional arguments are always required, so we don't use the required parameter
                 subparser.add_argument(
                     arg_name,
                     help=arg_schema.description,
                     type=self._get_type(arg_schema.type),
-                    required=arg_schema.required,
-                    choices=arg_schema.choices
+                    choices=arg_schema.choices,
                 )
 
-            # Add options
+            # Add options (optional)
             for opt_name, opt_schema in schema.options.items():
+                # Only use required for optional arguments (--options)
                 subparser.add_argument(
                     f"--{opt_name}",
                     help=opt_schema.description,
                     type=self._get_type(opt_schema.type),
                     required=opt_schema.required,
-                    choices=opt_schema.choices
+                    choices=opt_schema.choices,
                 )
 
             subparser.set_defaults(func=self._create_handler(command_name))
@@ -107,13 +108,14 @@ class MCPCLI:
             "bool": bool,
             "json": self._parse_json,
             "list": self._parse_list,
-            "dict": self._parse_dict
+            "dict": self._parse_dict,
         }
         return type_map.get(arg_type, str)
 
     def _parse_json(self, value: str) -> dict:
         """Parse JSON string"""
         import json
+
         return json.loads(value)
 
     def _parse_list(self, value: str) -> list:
@@ -126,23 +128,22 @@ class MCPCLI:
 
     def _create_handler(self, command_name: str):
         """Create a command handler"""
+
         def handler(args):
             try:
                 # Convert args to dict
                 args_dict = vars(args)
-                del args_dict['func']  # Remove the handler function
+                del args_dict["func"]  # Remove the handler function
 
                 # Validate arguments
                 validated_args = self.schema_manager.validate_arguments(
-                    command_name,
-                    args_dict
+                    command_name, args_dict
                 )
 
                 # Send request to server
-                response = self.client.send({
-                    "type": command_name,
-                    "arguments": validated_args
-                })
+                response = self.client.send(
+                    {"type": command_name, "arguments": validated_args}
+                )
 
                 # Display response
                 self._display_response(response)
@@ -228,11 +229,11 @@ class MCPCLI:
 
     def _display_available_commands(self):
         """Display available commands and their descriptions"""
-        self.console.print(Panel.fit(
-            "[bold]MCP CLI Tool[/bold]\n"
-            "Available commands:",
-            title="MCP CLI"
-        ))
+        self.console.print(
+            Panel.fit(
+                "[bold]MCP CLI Tool[/bold]\n" "Available commands:", title="MCP CLI"
+            )
+        )
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Command")
@@ -242,20 +243,20 @@ class MCPCLI:
             table.add_row(command_name, schema.description)
 
         self.console.print(table)
-        self.console.print("\nUse 'mcp <command> --help' for detailed command information")
+        self.console.print(
+            "\nUse 'mcp <command> --help' for detailed command information"
+        )
+
 
 def main():
     """Entry point for the CLI tool"""
     parser = argparse.ArgumentParser(description="MCP CLI Tool")
-    parser.add_argument(
-        "--config",
-        help="Path to configuration file",
-        default=None
-    )
+    parser.add_argument("--config", help="Path to configuration file", default=None)
     args = parser.parse_args()
 
     cli = MCPCLI(args.config)
     cli.run()
 
+
 if __name__ == "__main__":
-    main() 
+    main()

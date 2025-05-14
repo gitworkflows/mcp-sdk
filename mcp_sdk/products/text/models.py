@@ -1,8 +1,10 @@
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
+
 class TextRequest(BaseModel):
     """Text processing request model"""
+
     prompt: str
     model: str = Field(default="gpt-4")
     temperature: float = Field(default=0.7, ge=0.0, le=1.0)
@@ -13,11 +15,13 @@ class TextRequest(BaseModel):
     stop: Optional[List[str]] = None
     metadata: Optional[Dict[str, Any]] = None
 
+
 class TextResponse(BaseModel):
     """Text processing response model"""
+
     id: str
     model: str
     content: str
     created_at: str
     usage: Dict[str, int]
-    metadata: Optional[Dict[str, Any]] = None 
+    metadata: Optional[Dict[str, Any]] = None

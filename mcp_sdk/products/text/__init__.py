@@ -4,13 +4,7 @@ Text Processing Module - Tools for text-based operations
 
 from .client import TextClient
 from .models import TextRequest, TextResponse
-from .tools import (
-    generate,
-    summarize,
-    translate,
-    analyze_sentiment,
-    extract_keywords
-)
+from .tools import generate, summarize, translate, analyze_sentiment, extract_keywords
 
 __all__ = [
     "TextClient",
@@ -20,5 +14,5 @@ __all__ = [
     "summarize",
     "translate",
     "analyze_sentiment",
-    "extract_keywords"
-] 
+    "extract_keywords",
+]

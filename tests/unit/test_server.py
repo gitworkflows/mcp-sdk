@@ -89,7 +89,10 @@ class TestServer:
         client_info = ClientInfo(
             name="test-client",
             version="1.0",
-            platform="test"
+            platform="test",
+            language="python",
+            language_version="3.8",
+            sdk_version="0.1.0"
         )
         
         # Create a test request
@@ -152,7 +155,10 @@ class TestServer:
         client_info = ClientInfo(
             name="test-client",
             version="1.0",
-            platform="test"
+            platform="test",
+            language="python",
+            language_version="3.8",
+            sdk_version="0.1.0"
         )
         
         # Create a test request with a custom ID
@@ -186,7 +192,10 @@ class TestServer:
         client_info = ClientInfo(
             name="test-client",
             version="1.0",
-            platform="test"
+            platform="test",
+            language="python",
+            language_version="3.8",
+            sdk_version="0.1.0"
         )
         
         # Create a test request without an ID

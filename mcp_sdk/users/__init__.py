@@ -4,12 +4,7 @@ User Management Module - Tools for handling multiple users and sessions
 
 from .client import UserClient
 from .models import User, Session, UserRole
-from .auth import (
-    authenticate,
-    refresh_token,
-    logout,
-    validate_session
-)
+from .auth import authenticate, refresh_token, logout, validate_session
 
 __all__ = [
     "UserClient",
@@ -19,5 +14,5 @@ __all__ = [
     "authenticate",
     "refresh_token",
     "logout",
-    "validate_session"
-] 
+    "validate_session",
+]
