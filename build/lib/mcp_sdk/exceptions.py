@@ -78,4 +78,9 @@ class MCPConfigurationError(MCPError):
         self.setting = setting
         if setting:
             message = f"{message} in setting: {setting}"
-        super().__init__(message, **kwargs) 
+        super().__init__(message, **kwargs)
+
+class MCPSessionExpiredError(MCPAuthenticationError):
+    """Raised when a session has expired and cannot be refreshed"""
+    def __init__(self, message: str = "Session has expired", **kwargs):
+        super().__init__(message, **kwargs)

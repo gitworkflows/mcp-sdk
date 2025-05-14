@@ -2,9 +2,9 @@
 MCP SDK - A Python SDK for Media Control Protocol
 """
 
-from .client import MCPClient
-from .models import MCPRequest, MCPResponse
-from .exceptions import (
+from mcp_sdk.client import MCPClient
+from mcp_sdk.models import MCPRequest, MCPResponse
+from mcp_sdk.exceptions import (
     MCPError,
     MCPConnectionError,
     MCPAuthenticationError,
@@ -15,9 +15,11 @@ from .exceptions import (
     MCPPermissionError,
     MCPConfigurationError
 )
+from mcp_sdk.server import MCPServer
+from mcp_sdk.server_config import ServerConfig
 
 # Import product-specific modules
-from .products import (
+from mcp_sdk.products import (
     text,
     image,
     audio,
@@ -29,6 +31,8 @@ __all__ = [
     "MCPClient",
     "MCPRequest",
     "MCPResponse",
+    "MCPServer",
+    "ServerConfig",
     "MCPError",
     "MCPConnectionError",
     "MCPAuthenticationError",

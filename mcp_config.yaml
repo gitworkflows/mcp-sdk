@@ -1,0 +1,28 @@
+# MCP SDK Configuration File
+
+# API Authentication
+api_key: "your-api-key"  # Replace with actual API key
+
+# Server Connection
+endpoint: "http://localhost:8000"  # Default local endpoint
+
+# Request Settings
+timeout: 30  # Request timeout in seconds
+max_retries: 3  # Maximum number of retry attempts
+retry_backoff_factor: 0.5  # Exponential backoff factor for retries
+
+# Security Settings
+verify_ssl: true  # Verify SSL certificates
+
+# Optional Settings
+# proxy:
+#   http: "http://proxy.example.com:8080"
+#   https: "https://proxy.example.com:8080"
+# 
+# headers:
+#   X-Custom-Header: "custom-value"
+#
+# metadata:
+#   environment: "development"
+#   user_id: "dev-user-123"
+

@@ -15,6 +15,8 @@ from mcp_sdk.exceptions import (
     MCPPermissionError,
     MCPConfigurationError
 )
+from mcp_sdk.server import MCPServer
+from mcp_sdk.server_config import ServerConfig
 
 # Import product-specific modules
 from mcp_sdk.products import (
@@ -29,6 +31,8 @@ __all__ = [
     "MCPClient",
     "MCPRequest",
     "MCPResponse",
+    "MCPServer",
+    "ServerConfig",
     "MCPError",
     "MCPConnectionError",
     "MCPAuthenticationError",

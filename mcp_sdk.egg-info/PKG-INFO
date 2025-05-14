@@ -2,10 +2,10 @@ Metadata-Version: 2.4
 Name: mcp-sdk
 Version: 0.1.0
 Summary: MCP SDK with dynamic CLI support
-Home-page: https://github.com/yourusername/mcp-sdk
-Author: Your Name
+Home-page: https://github.com/khulnasoft-lab/mcp-sdk
+Author: Khulnasoft
 Author-email: Your Name <your.email@example.com>
-Project-URL: Homepage, https://github.com/yourusername/mcp-sdk
+Project-URL: Homepage, https://github.com/khulnasoft-lab/mcp-sdk
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent

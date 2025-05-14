@@ -1,4 +1,4 @@
-from mcp_sdk.server import MCPServer, ServerConfig
+from mcp_sdk import MCPServer, ServerConfig
 
 def main():
     # Create server configuration

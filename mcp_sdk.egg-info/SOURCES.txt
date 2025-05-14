@@ -11,6 +11,7 @@ mcp_sdk/models.py
 mcp_sdk/resources.py
 mcp_sdk/schema.py
 mcp_sdk/server.py
+mcp_sdk/server_config.py
 mcp_sdk.egg-info/PKG-INFO
 mcp_sdk.egg-info/SOURCES.txt
 mcp_sdk.egg-info/dependency_links.txt

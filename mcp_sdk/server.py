@@ -1,13 +1,13 @@
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import logging
 import uuid
 from datetime import datetime
 from .models import MCPRequest, MCPResponse, ClientInfo
 from .exceptions import MCPError
+from .server_config import ServerConfig
 from .messages import (
     MessageType,
     MessageStatus,
@@ -23,23 +23,12 @@ from .messages import (
     TextResponse,
     TextHandler
 )
-from .server.runner import ServerRunner
+from .server_utils.runner import ServerRunner
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class ServerConfig(BaseModel):
-    """Server configuration model"""
-    host: str = "0.0.0.0"
-    port: int = 8000
-    debug: bool = False
-    workers: int = 1
-    ssl_keyfile: Optional[str] = None
-    ssl_certfile: Optional[str] = None
-    cors_origins: list[str] = ["*"]
-    cors_methods: list[str] = ["*"]
-    cors_headers: list[str] = ["*"]
 
 class MCPServer:
     """MCP Server implementation with lifespan support"""

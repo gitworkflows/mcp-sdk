@@ -12,13 +12,24 @@ from .tools import (
     caption
 )
 
+# For consistency with products/__init__.py naming conventions
+image_generate = generate
+image_analyze = analyze
+
 __all__ = [
+    # Classes
     "ImageClient",
     "ImageRequest",
     "ImageResponse",
+    
+    # Direct function exports
     "generate",
     "edit",
     "variation",
     "analyze",
-    "caption"
-] 
+    "caption",
+    
+    # Aliased function exports (for consistent naming across modules)
+    "image_generate",
+    "image_analyze"
+]

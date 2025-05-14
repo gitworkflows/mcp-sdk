@@ -66,7 +66,7 @@ class MCPClient:
         self,
         api_key: str,
         endpoint: str,
-        client_info: Optional[ClientInfo] = None,
+        client_info: Optional[Union[ClientInfo, Dict[str, Any]]] = None,
         config: Optional[ClientConfig] = None,
         options: Optional[RequestOptions] = None
     ):
@@ -76,7 +76,7 @@ class MCPClient:
         Args:
             api_key: Your MCP API key
             endpoint: The MCP API endpoint
-            client_info: Client information
+            client_info: Client information as either a ClientInfo object or dict
             config: Client configuration
             options: Request options
 
@@ -90,7 +90,7 @@ class MCPClient:
             
         self.api_key = api_key
         self.endpoint = endpoint.rstrip('/')
-        self.client_info = client_info or self._create_default_client_info()
+        self._client_info = self._validate_client_info(client_info)
         self.config = config or ClientConfig(
             api_key=api_key,
             endpoint=endpoint
@@ -99,6 +99,47 @@ class MCPClient:
         
         self.session = self._create_session()
 
+    def _validate_client_info(self, client_info: Optional[Union[ClientInfo, Dict[str, Any]]] = None) -> ClientInfo:
+        """
+        Validate and create client information.
+
+        Args:
+            client_info: Client information as either a ClientInfo object or dict
+
+        Returns:
+            ClientInfo: Validated client info object
+        """
+        if client_info is None:
+            return self._create_default_client_info()
+            
+        if isinstance(client_info, dict):
+            # Ensure required fields are present
+            required_fields = ['name', 'version', 'language_version', 'sdk_version']
+            for field in required_fields:
+                if field not in client_info:
+                    client_info[field] = self._get_default_client_field(field)
+            return ClientInfo(**client_info)
+        elif isinstance(client_info, ClientInfo):
+            return client_info
+        else:
+            raise MCPConfigurationError(
+                "client_info must be either a dict or ClientInfo object",
+                setting="client_info"
+            )
+    
+    def _get_default_client_field(self, field: str) -> str:
+        """Get default value for a client info field"""
+        defaults = {
+            "name": "mcp-python-client",
+            "version": "0.1.0",
+            "platform": "python",
+            "environment": "production",
+            "language": "python",
+            "language_version": "3.8",
+            "sdk_version": "0.1.0"
+        }
+        return defaults.get(field, "")
+    
     def _create_default_client_info(self) -> ClientInfo:
         """Create default client information"""
         return ClientInfo(
@@ -133,15 +174,41 @@ class MCPClient:
         except Exception as e:
             raise MCPConfigurationError(f"Failed to create session: {str(e)}") from e
 
+    @property
+    def client_info(self) -> ClientInfo:
+        """Get the current client info"""
+        return self._client_info
+    
+    def update_client_info(self, **kwargs) -> None:
+        """
+        Update client information with the provided fields.
+        
+        Args:
+            **kwargs: Fields to update in client info
+        """
+        current_info = self._client_info.dict()
+        current_info.update({k: v for k, v in kwargs.items() if v is not None})
+        self._client_info = ClientInfo(**current_info)
+    
     def _prepare_headers(self) -> Dict[str, str]:
         """Prepare headers for API requests"""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "X-Client-Name": self.client_info.name,
-            "X-Client-Version": self.client_info.version,
-            "X-Client-Platform": self.client_info.platform
+            "X-Client-Name": self._client_info.name,
+            "X-Client-Version": self._client_info.version,
+            "X-Client-Platform": self._client_info.platform,
+            "X-Client-Environment": self._client_info.environment,
+            "X-Client-Language": self._client_info.language,
+            "X-Client-Language-Version": self._client_info.language_version,
+            "X-Client-SDK-Version": self._client_info.sdk_version
         }
+        
+        # Add client ID if available
+        if self._client_info.client_id:
+            headers["X-Client-ID"] = self._client_info.client_id
+            
+        # Add custom headers from options
         headers.update(self.options.headers)
         return headers
 
@@ -261,8 +328,14 @@ class MCPClient:
         """
         try:
             # Prepare request data
-            request_data = request.dict()
-            request_data["client_info"] = self.client_info.dict()
+            if isinstance(request, dict):
+                request_data = request.copy()
+                if "client_info" not in request_data:
+                    request_data["client_info"] = self._client_info.dict()
+            else:
+                request_data = request.dict()
+                if not hasattr(request, "client_info") or request.client_info is None:
+                    request_data["client_info"] = self._client_info.dict()
 
             # Make the request
             response = self.session.post(

@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/mcp-sdk"
+"Homepage" = "https://github.com/khulnasoft-lab/mcp-sdk"
 
 [project.scripts]
 mcp = "mcp_sdk.cli:main"
